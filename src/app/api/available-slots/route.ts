@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  try {
   // Get service duration
   const service = await prisma.service.findUnique({
     where: { id: serviceId },
@@ -98,4 +99,8 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({ slots: filteredSlots });
+  } catch (error) {
+    console.error("Error fetching available slots:", error);
+    return NextResponse.json({ slots: [], error: "Erro interno" }, { status: 500 });
+  }
 }

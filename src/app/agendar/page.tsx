@@ -31,7 +31,10 @@ export default function AgendarPage() {
   // Fetch services on mount
   useEffect(() => {
     fetch("/api/services")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch services");
+        return r.json();
+      })
       .then(setServices)
       .catch(console.error);
   }, []);
@@ -39,7 +42,10 @@ export default function AgendarPage() {
   // Fetch barbers on mount
   useEffect(() => {
     fetch("/api/barbers")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch barbers");
+        return r.json();
+      })
       .then(setBarbers)
       .catch(console.error);
   }, []);
@@ -56,6 +62,7 @@ export default function AgendarPage() {
         date: selectedDate,
       });
       const res = await fetch(`/api/available-slots?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch slots");
       const data = await res.json();
       setAvailableSlots(data.slots || []);
     } catch (error) {
@@ -121,8 +128,14 @@ export default function AgendarPage() {
       });
 
       if (!appointmentRes.ok) {
-        const error = await appointmentRes.json();
-        alert(error.error || "Erro ao criar agendamento");
+        let errorMsg = "Erro ao criar agendamento";
+        try {
+          const error = await appointmentRes.json();
+          errorMsg = error.error || errorMsg;
+        } catch {
+          // Response was not JSON
+        }
+        alert(errorMsg);
         setConfirmLoading(false);
         return;
       }

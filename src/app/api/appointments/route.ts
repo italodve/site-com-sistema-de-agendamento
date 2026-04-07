@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
   const {
     barberId,
@@ -42,6 +47,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  try {
   // Get service to calculate end time
   const service = await prisma.service.findUnique({
     where: { id: serviceId },
@@ -100,4 +106,8 @@ export async function POST(request: NextRequest) {
   });
 
   return NextResponse.json(appointment, { status: 201 });
+  } catch (error) {
+    console.error("Error creating appointment:", error);
+    return NextResponse.json({ error: "Erro interno ao criar agendamento" }, { status: 500 });
+  }
 }
