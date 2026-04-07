@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DatePickerProps {
@@ -17,33 +15,15 @@ const MONTHS = [
 
 export default function DatePicker({ selected, onSelect }: DatePickerProps) {
   const today = new Date();
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
 
   const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-  const prevMonth = () => {
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear((y) => y - 1);
-    } else {
-      setCurrentMonth((m) => m - 1);
-    }
-  };
-
-  const nextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear((y) => y + 1);
-    } else {
-      setCurrentMonth((m) => m + 1);
-    }
-  };
-
   const isDateDisabled = (day: number) => {
     const date = new Date(currentYear, currentMonth, day);
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayStart = new Date(currentYear, currentMonth, today.getDate());
     // Disable past dates and Sundays
     return date < todayStart || date.getDay() === 0;
   };
@@ -54,43 +34,21 @@ export default function DatePicker({ selected, onSelect }: DatePickerProps) {
     return `${currentYear}-${m}-${d}`;
   };
 
-  const isPastMonth =
-    currentYear < today.getFullYear() ||
-    (currentYear === today.getFullYear() && currentMonth <= today.getMonth());
-
   return (
     <div>
       <h2 className="font-serif text-3xl font-bold mb-2 text-center">
         Escolha a <span className="text-gradient-gold">Data</span>
       </h2>
       <p className="text-muted text-center mb-8">
-        Selecione o dia do seu agendamento
+        Agendamentos disponíveis apenas para o mês atual
       </p>
 
       <div className="max-w-md mx-auto bg-card border border-border rounded-2xl p-6">
-        {/* Month navigation */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={prevMonth}
-            disabled={isPastMonth}
-            className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-              isPastMonth
-                ? "text-muted/30 cursor-not-allowed"
-                : "hover:bg-gold/10 text-muted hover:text-gold"
-            )}
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
+        {/* Month header (fixed, no navigation) */}
+        <div className="flex items-center justify-center mb-6">
           <h3 className="font-serif text-xl font-bold">
             {MONTHS[currentMonth]} {currentYear}
           </h3>
-          <button
-            onClick={nextMonth}
-            className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-gold/10 text-muted hover:text-gold transition-colors"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Day headers */}
@@ -118,10 +76,7 @@ export default function DatePicker({ selected, onSelect }: DatePickerProps) {
             const dateStr = formatDateStr(day);
             const disabled = isDateDisabled(day);
             const isSelected = selected === dateStr;
-            const isToday =
-              day === today.getDate() &&
-              currentMonth === today.getMonth() &&
-              currentYear === today.getFullYear();
+            const isToday = day === today.getDate();
 
             return (
               <button

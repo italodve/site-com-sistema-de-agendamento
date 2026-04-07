@@ -29,6 +29,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Only allow dates in the current month
+  const now = new Date();
+  const requestedDate = new Date(date + "T12:00:00");
+  if (
+    requestedDate.getMonth() !== now.getMonth() ||
+    requestedDate.getFullYear() !== now.getFullYear()
+  ) {
+    return NextResponse.json(
+      { error: "Agendamentos disponíveis apenas para o mês atual" },
+      { status: 400 }
+    );
+  }
+
   // Get service to calculate end time
   const service = await prisma.service.findUnique({
     where: { id: serviceId },
