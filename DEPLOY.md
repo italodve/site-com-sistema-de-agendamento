@@ -1,182 +1,96 @@
-# Deploy na Hostinger VPS
+# Deploy no Railway
 
-## Pré-requisitos
-- VPS Hostinger com Ubuntu 22.04+
-- Acesso SSH ao servidor
-- Domínio apontando para o IP do VPS (configurar DNS na Hostinger)
+## Passo a passo
 
----
+### 1. Criar conta no Railway
 
-## 1. Acessar o VPS via SSH
+1. Acesse [railway.app](https://railway.app)
+2. Clique em **"Login"** e entre com sua conta do **GitHub**
 
-```bash
-ssh root@SEU_IP_DO_VPS
-```
+### 2. Criar novo projeto
 
-## 2. Instalar Node.js 20+
+1. No dashboard, clique em **"New Project"**
+2. Selecione **"Deploy from GitHub repo"**
+3. Autorize o Railway a acessar seus repositórios
+4. Escolha o repositório **`italodve/site-com-sistema-de-agendamento`**
+5. O Railway vai detectar automaticamente que é um projeto Node.js
 
-```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-node -v  # deve mostrar v20+
-```
+### 3. Adicionar banco de dados PostgreSQL
 
-## 3. Instalar Nginx e PM2
+1. Dentro do projeto, clique em **"+ New"** → **"Database"** → **"Add PostgreSQL"**
+2. O Railway cria o banco e define automaticamente a variável `DATABASE_URL`
+3. Não precisa configurar nada manualmente!
 
-```bash
-sudo apt-get install -y nginx
-sudo npm install -g pm2
-```
+### 4. Configurar variáveis de ambiente
 
-## 4. Clonar o projeto
+1. Clique no **serviço do seu app** (não no banco)
+2. Vá na aba **"Variables"**
+3. Adicione as seguintes variáveis:
 
-```bash
-sudo mkdir -p /var/www
-cd /var/www
-git clone https://github.com/italodve/site-com-sistema-de-agendamento.git sua-barbearia
-cd sua-barbearia
-git checkout claude/barbershop-website-template-zRO0u
-```
+| Variável | Valor |
+|---|---|
+| `MERCADOPAGO_ACCESS_TOKEN` | Seu Access Token do Mercado Pago |
+| `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` | Sua Public Key do Mercado Pago |
+| `NEXT_PUBLIC_BASE_URL` | `https://seu-app.up.railway.app` (atualizar depois com o domínio real) |
 
-## 5. Instalar dependências e configurar
-
-```bash
-npm install
-```
-
-### Criar arquivo .env
-
-```bash
-nano .env
-```
-
-Cole o seguinte conteúdo (substitua os valores):
-
-```env
-DATABASE_URL="file:./prisma/prod.db"
-MERCADOPAGO_ACCESS_TOKEN="SEU_ACCESS_TOKEN_AQUI"
-NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY="SUA_PUBLIC_KEY_AQUI"
-NEXT_PUBLIC_BASE_URL="https://seudominio.com.br"
-```
-
-> **Como obter as credenciais do Mercado Pago:**
-> 1. Acesse https://www.mercadopago.com.br/developers
+> **Credenciais do Mercado Pago:**
+> 1. Acesse [mercadopago.com.br/developers](https://www.mercadopago.com.br/developers)
 > 2. Crie uma aplicação
 > 3. Copie o Access Token e a Public Key das credenciais de **produção**
 
-### Configurar banco de dados
+> **Nota:** A variável `DATABASE_URL` já é configurada automaticamente pelo Railway quando você adiciona o PostgreSQL. Não precisa adicionar manualmente.
 
-```bash
-npm run db:setup
-```
+### 5. Deploy automático
 
-## 6. Build de produção
+O Railway faz o deploy automaticamente após configurar as variáveis. O processo de build executa:
 
-```bash
-npm run build
-```
+1. `npm install` - instala dependências
+2. `prisma generate` - gera o client do Prisma
+3. `prisma db push` - cria as tabelas no PostgreSQL
+4. `next build` - compila o Next.js
+5. `tsx prisma/seed.ts` - popula o banco com dados iniciais (só na primeira vez)
 
-## 7. Iniciar com PM2
+Aguarde o build finalizar (1-2 minutos).
 
-```bash
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup  # seguir as instruções para auto-start no boot
-```
+### 6. Acessar o site
 
-### Comandos úteis do PM2:
-```bash
-pm2 status              # ver status
-pm2 logs sua-barbearia  # ver logs
-pm2 restart sua-barbearia  # reiniciar
-pm2 stop sua-barbearia     # parar
-```
+1. Vá na aba **"Settings"** do serviço
+2. Em **"Networking"** → **"Public Networking"**, clique em **"Generate Domain"**
+3. O Railway gera uma URL tipo `seu-app.up.railway.app`
+4. Acesse a URL e seu site estará no ar!
 
-## 8. Configurar Nginx
+### 7. Domínio personalizado (opcional)
 
-### Copiar configuração
-
-```bash
-sudo nano /etc/nginx/sites-available/sua-barbearia
-```
-
-Cole o conteúdo do arquivo `nginx.conf.example`, substituindo `seudominio.com.br` pelo seu domínio real.
-
-### Ativar o site
-
-```bash
-sudo ln -s /etc/nginx/sites-available/sua-barbearia /etc/nginx/sites-enabled/
-sudo rm /etc/nginx/sites-enabled/default  # remover site padrão
-sudo nginx -t  # testar configuração
-sudo systemctl reload nginx
-```
-
-## 9. SSL com Let's Encrypt (HTTPS gratuito)
-
-```bash
-sudo apt-get install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d seudominio.com.br -d www.seudominio.com.br
-```
-
-O Certbot vai configurar o SSL automaticamente e renovar a cada 90 dias.
-
-## 10. Configurar DNS na Hostinger
-
-No painel da Hostinger:
-1. Vá em **Domínios** → seu domínio → **DNS / Nameservers**
-2. Adicione um registro **A** apontando para o IP do seu VPS:
-   - Tipo: `A`
-   - Nome: `@`
-   - Valor: `IP_DO_SEU_VPS`
-   - TTL: `3600`
-3. Adicione outro registro **A** para `www`:
-   - Tipo: `A`
-   - Nome: `www`
-   - Valor: `IP_DO_SEU_VPS`
-   - TTL: `3600`
+1. Na aba **"Settings"** → **"Public Networking"**
+2. Clique em **"+ Custom Domain"**
+3. Digite seu domínio (ex: `suabarbearia.com.br`)
+4. O Railway mostra um registro **CNAME** para configurar no DNS do seu domínio
+5. Configure o CNAME no painel do seu registrador de domínio
+6. Após propagação do DNS (~5 min), o Railway gera SSL automaticamente
+7. Atualize `NEXT_PUBLIC_BASE_URL` para `https://suabarbearia.com.br`
 
 ---
 
-## Atualizando o site
+## Deploy automático a cada push
 
-Para atualizar após mudanças no código:
+O Railway faz **deploy automático** toda vez que você faz push na branch principal. Não precisa fazer nada manual.
 
-```bash
-cd /var/www/sua-barbearia
-git pull
-npm install
-npm run build
-pm2 restart sua-barbearia
-```
+Para alterar a branch de deploy:
+1. Aba **"Settings"** → **"Source"**
+2. Mude a branch para `claude/barbershop-website-template-zRO0u` ou `main`
 
 ---
 
-## Trocar para PostgreSQL (opcional, recomendado para produção)
+## Monitoramento
 
-1. Instalar PostgreSQL:
-```bash
-sudo apt-get install -y postgresql
-sudo -u postgres createuser barbearia
-sudo -u postgres createdb barbearia_db -O barbearia
-sudo -u postgres psql -c "ALTER USER barbearia PASSWORD 'sua_senha_segura';"
-```
+- **Logs**: Clique no serviço → aba **"Logs"** para ver logs em tempo real
+- **Métricas**: Aba **"Metrics"** mostra uso de CPU, memória e rede
+- **Deployments**: Aba **"Deployments"** mostra histórico de deploys
 
-2. Alterar `prisma/schema.prisma`:
-```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
+---
 
-3. Alterar `.env`:
-```env
-DATABASE_URL="postgresql://barbearia:sua_senha_segura@localhost:5432/barbearia_db"
-```
+## Custos
 
-4. Rodar migrations:
-```bash
-npm run db:setup
-npm run build
-pm2 restart sua-barbearia
-```
+- **Trial**: US$5 de crédito grátis (sem cartão)
+- **Starter**: US$5/mês com US$5 de crédito incluso
+- **Este projeto** consome aprox. US$2-4/mês (app + PostgreSQL)

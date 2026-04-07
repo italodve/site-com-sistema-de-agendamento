@@ -3,6 +3,13 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
+  // Skip if already seeded
+  const existingServices = await prisma.service.count();
+  if (existingServices > 0) {
+    console.log("Database already seeded, skipping.");
+    return;
+  }
+
   // Create services
   const services = await Promise.all([
     prisma.service.create({
@@ -91,7 +98,6 @@ async function main() {
     }
   }
 
-  // Create lunch blocked slots for each barber (12:00 - 13:00, recurring via sample dates)
   console.log(`Seeded ${services.length} services`);
   console.log(`Seeded ${barbers.length} barbers`);
   console.log("Seeded working hours (Mon-Sat, 09:00-19:00)");

@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && next build",
+    "build": "prisma generate && next build",
+    "postbuild": "prisma db push && tsx prisma/seed.ts || true",
     "start": "next start -p ${PORT:-3000}",
-    "db:push": "npx prisma db push",
-    "db:seed": "npx tsx prisma/seed.ts",
-    "db:setup": "npx prisma db push && npx tsx prisma/seed.ts",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "prisma db push && tsx prisma/seed.ts",
     "lint": "eslint"
   },
   "dependencies": {
@@ -18,7 +19,8 @@
     "next": "16.2.2",
     "prisma": "^5.22.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
