@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Service {
+  id              String        @id @default(cuid())
+  name            String
+  description     String
+  price           Int           // price in centavos (BRL)
+  durationMinutes Int
+  imageUrl        String?
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  appointments    Appointment[]
+}
+
+model Barber {
+  id           String         @id @default(cuid())
+  name         String
+  bio          String
+  photoUrl     String?
+  active       Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  workingHours WorkingHours[]
+  appointments Appointment[]
+  blockedSlots BlockedSlot[]
+}
+
+model WorkingHours {
+  id        String @id @default(cuid())
+  barberId  String
+  dayOfWeek Int    // 0 = Sunday, 6 = Saturday
+  startTime String // "09:00"
+  endTime   String // "18:00"
+  barber    Barber @relation(fields: [barberId], references: [id])
+}
+
+model Appointment {
+  id            String   @id @default(cuid())
+  barberId      String
+  serviceId     String
+  customerName  String
+  customerPhone String
+  customerEmail String
+  date          String   // "2024-01-15"
+  startTime     String   // "09:00"
+  endTime       String   // "09:30"
+  status        String   @default("PENDING") // PENDING, CONFIRMED, CANCELLED, COMPLETED
+  paymentId     String?
+  paymentStatus String?  // approved, pending, rejected
+  createdAt     DateTime @default(now())
+  barber        Barber   @relation(fields: [barberId], references: [id])
+  service       Service  @relation(fields: [serviceId], references: [id])
+}
+
+model BlockedSlot {
+  id        String @id @default(cuid())
+  barberId  String
+  date      String
+  startTime String
+  endTime   String
+  reason    String?
+  barber    Barber @relation(fields: [barberId], references: [id])
+}
