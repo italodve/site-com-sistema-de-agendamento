@@ -1,65 +1,51 @@
-const { execSync, spawn } = require("child_process");
+const { execSync } = require("child_process");
+const path = require("path");
 
-// Log startup info
-console.log(`[start] Node.js ${process.version}`);
-console.log(`[start] cwd: ${process.cwd()}`);
-console.log(`[start] __dirname: ${__dirname}`);
+// ── Diagnostics ──
+console.log(`[start] Node ${process.version}, cwd: ${process.cwd()}`);
 
-// Mask DATABASE_URL for logging
 const dbUrl = process.env.DATABASE_URL || "";
 if (dbUrl) {
   try {
     const url = new URL(dbUrl);
-    console.log(`[start] DATABASE_URL host: ${url.hostname}:${url.port}`);
+    console.log(`[start] DATABASE_URL: ${url.hostname}:${url.port || 5432}`);
   } catch {
-    console.log(`[start] DATABASE_URL set but unparseable (length: ${dbUrl.length})`);
+    console.log(`[start] DATABASE_URL set (length: ${dbUrl.length})`);
   }
 } else {
   console.error("[start] WARNING: DATABASE_URL is NOT set!");
 }
 
-function run(cmd) {
-  console.log(`[start] Running: ${cmd}`);
-  try {
-    execSync(cmd, { stdio: "inherit", timeout: 60000, shell: true });
-    console.log(`[start] OK: ${cmd}`);
-    return true;
-  } catch (e) {
-    console.error(`[start] FAILED: ${cmd} — ${e.message}`);
-    return false;
-  }
+// ── Database setup (prisma db push) ──
+try {
+  const prismaDir = path.dirname(require.resolve("prisma/package.json"));
+  const prismaBin = path.join(prismaDir, "build", "index.js");
+  console.log("[start] Running prisma db push...");
+  execSync(`node "${prismaBin}" db push --skip-generate --accept-data-loss`, {
+    stdio: "inherit",
+    timeout: 30000,
+  });
+  console.log("[start] prisma db push OK");
+} catch (e) {
+  console.error("[start] prisma db push FAILED:", e.message);
+  console.log("[start] Tables will be created via raw SQL on first API request");
 }
 
-// Setup database
-const dbPushOk = run("npx prisma db push --skip-generate --accept-data-loss");
-if (!dbPushOk) {
-  console.log("[start] db push failed — raw SQL fallback will create tables on first request");
-}
+// ── Seed (skip — auto-seed handles it via API routes) ──
+console.log("[start] Seed will run automatically on first API request");
 
-if (dbPushOk) {
-  if (!run("npx tsx prisma/seed.ts")) {
-    console.log("[start] seed failed — auto-seed via API will handle it");
-  }
-} else {
-  console.log("[start] skipping seed — auto-seed via API will handle it");
-}
+// ── Start Next.js programmatically ──
+const port = parseInt(process.env.PORT || "3000", 10);
+console.log(`[start] Starting Next.js on 0.0.0.0:${port}...`);
 
-// Start Next.js
-const port = process.env.PORT || "3000";
-console.log(`[start] Starting Next.js on port ${port}...`);
+const { startServer } = require("next/dist/server/lib/start-server");
 
-const server = spawn("npx", ["next", "start", "-p", port, "-H", "0.0.0.0"], {
-  stdio: "inherit",
-  env: process.env,
-  shell: true,
-});
-
-server.on("error", (err) => {
-  console.error("[start] Failed to spawn Next.js:", err);
+startServer({
+  dir: process.cwd(),
+  isDev: false,
+  hostname: "0.0.0.0",
+  port: port,
+}).catch((err) => {
+  console.error("[start] Next.js failed to start:", err);
   process.exit(1);
-});
-
-server.on("close", (code) => {
-  console.log(`[start] Next.js exited with code ${code}`);
-  process.exit(code || 0);
 });
