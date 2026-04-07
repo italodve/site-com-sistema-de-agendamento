@@ -16,6 +16,8 @@ export default function AgendarPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
 
@@ -28,26 +30,38 @@ export default function AgendarPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
 
-  // Fetch services on mount
+  // Fetch services and barbers on mount
   useEffect(() => {
-    fetch("/api/services")
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to fetch services");
-        return r.json();
-      })
-      .then(setServices)
-      .catch(console.error);
-  }, []);
-
-  // Fetch barbers on mount
-  useEffect(() => {
-    fetch("/api/barbers")
-      .then((r) => {
-        if (!r.ok) throw new Error("Failed to fetch barbers");
-        return r.json();
-      })
-      .then(setBarbers)
-      .catch(console.error);
+    async function loadData() {
+      setLoading(true);
+      setError(null);
+      try {
+        const [servicesRes, barbersRes] = await Promise.all([
+          fetch("/api/services"),
+          fetch("/api/barbers"),
+        ]);
+        if (!servicesRes.ok) {
+          const detail = await servicesRes.text().catch(() => "");
+          throw new Error(`Serviços: ${servicesRes.status} ${detail}`);
+        }
+        if (!barbersRes.ok) {
+          const detail = await barbersRes.text().catch(() => "");
+          throw new Error(`Barbeiros: ${barbersRes.status} ${detail}`);
+        }
+        const [servicesData, barbersData] = await Promise.all([
+          servicesRes.json(),
+          barbersRes.json(),
+        ]);
+        setServices(Array.isArray(servicesData) ? servicesData : []);
+        setBarbers(Array.isArray(barbersData) ? barbersData : []);
+      } catch (err) {
+        console.error("Error loading data:", err);
+        setError("Erro ao carregar dados. Verifique sua conexão e tente novamente.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
   }, []);
 
   // Fetch available slots when barber + service + date are selected
@@ -213,28 +227,49 @@ export default function AgendarPage() {
           </button>
         )}
 
+        {/* Loading state */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-3 border-gold/30 border-t-gold rounded-full animate-spin mb-4" />
+            <p className="text-muted">Carregando serviços...</p>
+          </div>
+        )}
+
+        {/* Error state */}
+        {!loading && error && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <p className="text-red-400 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-gold text-background rounded-lg hover:bg-gold-light transition-colors font-medium"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        )}
+
         {/* Step content */}
-        {step === 0 && (
+        {!loading && !error && step === 0 && (
           <ServicePicker
             services={services}
             selected={selectedService}
             onSelect={handleServiceSelect}
           />
         )}
-        {step === 1 && (
+        {!loading && !error && step === 1 && (
           <BarberPicker
             barbers={barbers}
             selected={selectedBarber}
             onSelect={handleBarberSelect}
           />
         )}
-        {step === 2 && (
+        {!loading && !error && step === 2 && (
           <DatePicker
             selected={selectedDate}
             onSelect={handleDateSelect}
           />
         )}
-        {step === 3 && (
+        {!loading && !error && step === 3 && (
           <TimeSlotPicker
             slots={availableSlots}
             selected={selectedTime}
@@ -242,7 +277,7 @@ export default function AgendarPage() {
             loading={slotsLoading}
           />
         )}
-        {step === 4 && selectedService && selectedBarber && selectedDate && selectedTime && (
+        {!loading && !error && step === 4 && selectedService && selectedBarber && selectedDate && selectedTime && (
           <BookingSummary
             service={selectedService}
             barber={selectedBarber}
