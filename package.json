@@ -4,8 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "npx prisma generate && next build",
+    "start": "next start -p ${PORT:-3000}",
+    "db:push": "npx prisma db push",
+    "db:seed": "npx tsx prisma/seed.ts",
+    "db:setup": "npx prisma db push && npx tsx prisma/seed.ts",
     "lint": "eslint"
   },
   "dependencies": {
