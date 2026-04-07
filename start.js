@@ -1,88 +1,63 @@
 const { execSync, spawn } = require("child_process");
-const path = require("path");
-const fs = require("fs");
 
 // Log startup info
 console.log(`[start] Node.js ${process.version}`);
-console.log(`[start] __dirname: ${__dirname}`);
 console.log(`[start] cwd: ${process.cwd()}`);
+console.log(`[start] __dirname: ${__dirname}`);
 
-// Mask DATABASE_URL for logging (show only host)
+// Mask DATABASE_URL for logging
 const dbUrl = process.env.DATABASE_URL || "";
 if (dbUrl) {
   try {
     const url = new URL(dbUrl);
     console.log(`[start] DATABASE_URL host: ${url.hostname}:${url.port}`);
   } catch {
-    console.log(`[start] DATABASE_URL is set but could not parse (length: ${dbUrl.length})`);
+    console.log(`[start] DATABASE_URL set but unparseable (length: ${dbUrl.length})`);
   }
 } else {
   console.error("[start] WARNING: DATABASE_URL is NOT set!");
 }
 
-// Find a working binary path
-function findBinary(name) {
-  const candidates = [
-    path.join(__dirname, "node_modules", ".bin", name),
-    path.join(process.cwd(), "node_modules", ".bin", name),
-    `/app/node_modules/.bin/${name}`,
-  ];
-
-  for (const p of candidates) {
-    if (fs.existsSync(p)) {
-      console.log(`[start] Found ${name} at: ${p}`);
-      return p;
-    }
-  }
-
-  // Fallback to npx
-  console.log(`[start] ${name} binary not found at known paths, using npx`);
-  return `npx ${name}`;
-}
-
 function run(cmd) {
-  const timestamp = new Date().toISOString();
-  console.log(`[start] [${timestamp}] Running: ${cmd}`);
+  console.log(`[start] Running: ${cmd}`);
   try {
-    execSync(cmd, { stdio: "inherit", timeout: 60000 });
-    console.log(`[start] [${new Date().toISOString()}] Success: ${cmd}`);
+    execSync(cmd, { stdio: "inherit", timeout: 60000, shell: true });
+    console.log(`[start] OK: ${cmd}`);
     return true;
   } catch (e) {
-    console.error(`[start] [${new Date().toISOString()}] FAILED: ${cmd}`);
-    console.error(`[start] Error: ${e.message}`);
+    console.error(`[start] FAILED: ${cmd} — ${e.message}`);
     return false;
   }
 }
 
-// Setup database tables
-const prismaPath = findBinary("prisma");
-const dbPushOk = run(`${prismaPath} db push --skip-generate --accept-data-loss`);
-
+// Setup database
+const dbPushOk = run("npx prisma db push --skip-generate --accept-data-loss");
 if (!dbPushOk) {
-  console.log("[start] prisma db push failed — tables will be created by API routes on first request (raw SQL fallback)");
+  console.log("[start] db push failed — raw SQL fallback will create tables on first request");
 }
 
-// Seed initial data
 if (dbPushOk) {
-  const tsxPath = findBinary("tsx");
-  const seedOk = run(`${tsxPath} prisma/seed.ts`);
-  if (!seedOk) {
-    console.log("[start] Seed failed — data will be auto-seeded by API routes on first request");
+  if (!run("npx tsx prisma/seed.ts")) {
+    console.log("[start] seed failed — auto-seed via API will handle it");
   }
 } else {
-  console.log("[start] Skipping seed (no tables) — will auto-seed via API routes");
+  console.log("[start] skipping seed — auto-seed via API will handle it");
 }
 
 // Start Next.js
 const port = process.env.PORT || "3000";
 console.log(`[start] Starting Next.js on port ${port}...`);
 
-const nextPath = findBinary("next");
-const server = spawn(
-  nextPath,
-  ["start", "-p", port, "-H", "0.0.0.0"],
-  { stdio: "inherit", env: process.env }
-);
+const server = spawn("npx", ["next", "start", "-p", port, "-H", "0.0.0.0"], {
+  stdio: "inherit",
+  env: process.env,
+  shell: true,
+});
+
+server.on("error", (err) => {
+  console.error("[start] Failed to spawn Next.js:", err);
+  process.exit(1);
+});
 
 server.on("close", (code) => {
   console.log(`[start] Next.js exited with code ${code}`);
