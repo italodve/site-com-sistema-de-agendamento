@@ -5,7 +5,7 @@
     "buildCommand": "npm run build"
   },
   "deploy": {
-    "startCommand": "HOSTNAME=0.0.0.0 npm start",
+    "startCommand": "npm start -- -H 0.0.0.0",
     "healthcheckPath": "/",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
