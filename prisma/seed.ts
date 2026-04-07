@@ -6,9 +6,11 @@ async function main() {
   // Skip if already seeded
   const existingServices = await prisma.service.count();
   if (existingServices > 0) {
-    console.log("Database already seeded, skipping.");
+    console.log("[seed] Database already seeded, skipping.");
     return;
   }
+
+  console.log("[seed] Seeding database...");
 
   // Create services
   const services = await Promise.all([
@@ -98,9 +100,10 @@ async function main() {
     }
   }
 
-  console.log(`Seeded ${services.length} services`);
-  console.log(`Seeded ${barbers.length} barbers`);
-  console.log("Seeded working hours (Mon-Sat, 09:00-19:00)");
+  console.log(`[seed] Created ${services.length} services`);
+  console.log(`[seed] Created ${barbers.length} barbers`);
+  console.log("[seed] Created working hours (Mon-Sat, 09:00-19:00)");
+  console.log("[seed] Done!");
 }
 
 main()
@@ -108,7 +111,7 @@ main()
     await prisma.$disconnect();
   })
   .catch(async (e) => {
-    console.error(e);
+    console.error("[seed] Error:", e);
     await prisma.$disconnect();
-    process.exit(1);
+    // Don't exit with error code - this would break Railway deploy
   });
