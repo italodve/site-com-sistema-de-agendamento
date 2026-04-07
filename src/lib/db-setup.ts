@@ -5,21 +5,32 @@ let dbReady = false;
 export async function ensureDatabaseReady(): Promise<void> {
   if (dbReady) return;
 
+  // First verify we can connect to the database at all
   try {
-    // Quick check: can we query the Service table?
+    await prisma.$queryRaw`SELECT 1`;
+  } catch (connError) {
+    console.error("[db-setup] Cannot connect to database:", String(connError));
+    console.error("[db-setup] DATABASE_URL set:", !!process.env.DATABASE_URL);
+    throw connError;
+  }
+
+  // Check if tables exist
+  try {
     await prisma.$queryRaw`SELECT 1 FROM "Service" LIMIT 1`;
     dbReady = true;
+    return;
   } catch {
-    // Tables don't exist — create them via raw SQL
+    // Tables don't exist — create them
     console.log("[db-setup] Tables not found, creating via raw SQL...");
-    try {
-      await createTables();
-      console.log("[db-setup] Tables created successfully");
-      dbReady = true;
-    } catch (createError) {
-      console.error("[db-setup] Failed to create tables:", createError);
-      throw createError;
-    }
+  }
+
+  try {
+    await createTables();
+    console.log("[db-setup] Tables created successfully");
+    dbReady = true;
+  } catch (createError) {
+    console.error("[db-setup] Failed to create tables:", createError);
+    throw createError;
   }
 }
 

@@ -56,7 +56,8 @@ export default function AgendarPage() {
         setBarbers(Array.isArray(barbersData) ? barbersData : []);
       } catch (err) {
         console.error("Error loading data:", err);
-        setError("Erro ao carregar dados. Verifique sua conexão e tente novamente.");
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(`Erro ao carregar dados: ${msg}`);
       } finally {
         setLoading(false);
       }
