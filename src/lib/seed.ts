@@ -1,9 +1,13 @@
 import { prisma } from "./prisma";
+import { ensureDatabaseReady } from "./db-setup";
 
 let seeded = false;
 
 export async function seedDatabase(): Promise<boolean> {
   if (seeded) return false;
+
+  // Ensure tables exist before querying
+  await ensureDatabaseReady();
 
   const count = await prisma.service.count();
   if (count > 0) {
