@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { seedDatabase } from "@/lib/seed";
 
 export async function GET() {
   try {
-    const barbers = await prisma.barber.findMany({
+    let barbers = await prisma.barber.findMany({
       where: { active: true },
       orderBy: { createdAt: "asc" },
     });
+
+    // Auto-seed if database is empty
+    if (barbers.length === 0) {
+      await seedDatabase();
+      barbers = await prisma.barber.findMany({
+        where: { active: true },
+        orderBy: { createdAt: "asc" },
+      });
+    }
 
     return NextResponse.json(barbers);
   } catch (error) {
